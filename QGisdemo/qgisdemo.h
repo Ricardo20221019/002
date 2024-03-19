@@ -30,12 +30,16 @@ public:
 
 signals:
     void DeleteFeature();
-    void addFeature();
-    void curLayerChange(int index);
+    void AllClear();
+    void SaveAttribute();
     void curManvasStatusChange(int index);
+
 public slots:
     void on_delete_button_clicked();
-    void on_edit_button_clicked();
+    void on_all_clear_button_clicked();
+    void on_save_attribute_button_clicked();
+    void on_min_path_clicked();
+
 
 
 

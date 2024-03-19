@@ -13,19 +13,25 @@ QgsGraphMap::QgsGraphMap(QWidget *parent) : QWidget(parent)
 
     initalive();
 
-    mapToolPan=new QgsMapToolPan(mMapCanvas);
-    identifyTool= new QgsMapToolIdentify(mMapCanvas);
-//    mMapCanvas->setMapTool(identifyTool);
 
     connect(mMapCanvas, SIGNAL(xyCoordinates(QgsPointXY)),
             this, SLOT(Show_Coordinate(QgsPointXY)) );
 //    mToolEmitPoint=new QgsMapToolEmitPoint(mMapCanvas);
     add_feature_tool=new MyFeatureTool(mMapCanvas);
+    add_feature_tool->addLayers(my_layers[0],0);
+    add_feature_tool->addLayers(my_layers[1],1);
+    add_feature_tool->addLayers(my_layers[2],2);
+    add_feature_tool->getALLFeaturesId();
     connect(this,&QgsGraphMap::deletefeature,add_feature_tool,&MyFeatureTool::deleteFeature);
+//    connect(add_feature_tool,&MyFeatureTool::curLayerChange,this,&QgsGraphMap::setCurrentLayer);
+    connect(this,&QgsGraphMap::allClearFeatures,add_feature_tool,&MyFeatureTool::allClear);
 
-//    mMapCanvas->setMapTool(feature_tool);
 
-    canvas_status=DrawingMode::SelectionMode;
+    add_feature_tool->setMode(DrawingMode::SelectionMode);
+    mMapCanvas->setMapTool(add_feature_tool);
+    updateAtrribute();
+
+//    canvas_status=DrawingMode::SelectionMode;
 //    mMapCanvas->setMapTool(mToolEmitPoint);
 
 
@@ -41,113 +47,47 @@ void QgsGraphMap::Show_Coordinate(const QgsPointXY &p)
 //    qDebug()<<p.x()<<" "<<p.y();
 
 }
-void QgsGraphMap::setCanvasStatus(int index)
+void QgsGraphMap::setToolStatus(int index)
 {
-    canvas_status=getCanvasStatus(index);
-    mMapCanvas->unsetMapTool(mMapCanvas->mapTool());
-    if(index==0)
+//    canvas_status=getCanvasStatus(index);
+    if(index!=0)//绘制
+    {
+        if(add_feature_tool->Mode()==DrawingMode::SelectionMode)
+        {
+            add_feature_tool->stopCapturing();
+        }
+        add_feature_tool->clearHighLight();
+        add_feature_tool->startCapturing();
+    }
+    else//选中
     {
         add_feature_tool->stopCapturing();
-        mMapCanvas->setMapTool(select_feature_Tool[index]);
-        qDebug()<<"-----选择工具";
-    }
-    else if(index==1)
-    {
-        add_feature_tool->startCapturing();
-        mMapCanvas->setMapTool(add_feature_tool);
-        if(highlight)
-        {
-            delete highlight;
-            highlight=nullptr;
-            select_feature=nullptr;
-        }
-        qDebug()<<"-----绘制工具";
     }
 
+    add_feature_tool->setMode(getCanvasStatus(index));
 }
 
-void QgsGraphMap::setCurrentLayer(int index)
-{
-    currentLayer=index;
-    mMapCanvas->setCurrentLayer(my_layers[index]);
-    QgsVectorLayer *curLayer=qobject_cast<QgsVectorLayer *>(mMapCanvas->currentLayer());
-    qDebug()<<"当前图层："<<curLayer->geometryType();
-    if(canvas_status==DrawingMode::SelectionMode)
-    {
-        mMapCanvas->unsetMapTool(mMapCanvas->mapTool());
-        mMapCanvas->setMapTool(select_feature_Tool[index]);
-    }
-    else if(canvas_status==DrawingMode::LineMode)
-    {
-        qDebug()<<"切换到直线图层";
-    }
-    else if(canvas_status==DrawingMode::AreaMode)
-    {
-        qDebug()<<"切换到多边形图层";
-    }
+//void QgsGraphMap::setCurrentLayer(int index)//curLayerChange(QgsWkbTypes::GeometryType curType);
+//{
+//    currentLayer=index;
+//    mMapCanvas->setCurrentLayer(my_layers[index]);
+//    my_layers[index]->startEditing();
+////    QgsVectorLayer *curLayer=qobject_cast<QgsVectorLayer *>(mMapCanvas->currentLayer());
+////    qDebug()<<"当前图层："<<curLayer->geometryType();
 
+//}
 
-
-//    qDebug()<<"当前图层："<<index;
-
-//    mMapCanvas->currentLayer()->
-}
 void QgsGraphMap::deleteFeature()
 {
-
-    if(highlight)
+    if(add_feature_tool->getFeatureId()!=-1)
     {
-        emit deletefeature(select_feature_id);
-        delete highlight;
-        highlight=nullptr;
-        select_feature=nullptr;
+        emit deletefeature();
+        mMapCanvas->refresh();
     }
-    mMapCanvas->refresh();
-
 }
-//void QgsGraphMap::clear(bool value)
-//{
-//    clearShpLayer();
-//}
-void QgsGraphMap::on_edit_button_clicked()
+void QgsGraphMap::allClear()
 {
-
-    my_layers[0]->rollBack(true);
-    my_layers[1]->rollBack(true);
-    my_layers[2]->rollBack(true);
-    qDebug()<<"绘制 回滚";
-
-
-    mMapCanvas->setCurrentLayer(my_layers[currentLayer]);
-    my_layers[currentLayer]->startEditing();
-    qDebug()<<"图层："<<currentLayer<<"开始编辑！";
-
-//    qDebug()<<123;
-}
-void QgsGraphMap::selectFeature(const QgsFeature& feature)
-{
-    if(!highlight)//选中要素没有高亮
-    {
-        if(select_feature)//之前有选中要素
-        {
-//                    delete highlight;
-            highlight=nullptr;
-//                    select_feature=nullptr;
-            setHightLight(feature);
-        }
-        else
-        {
-            setHightLight(feature);
-        }
-
-    }
-    else//选中要素有高亮
-    {
-        delete highlight;
-        highlight=nullptr;
-        select_feature=nullptr;
-        setHightLight(feature);
-    }
+    emit allClearFeatures();
 }
 void QgsGraphMap::SaveShp(QString dir_path,QString filename,QgsVectorLayer* layers)
 {
@@ -161,43 +101,24 @@ void QgsGraphMap::SaveShp(QString dir_path,QString filename,QgsVectorLayer* laye
         qDebug()<<"保存矢量图层为.shp文件失败";
     }
 }
-void QgsGraphMap::InitConnectMapTool()
-{
 
-//
-    select_feature_Tool[0]=new QgsMapToolIdentifyFeature(mMapCanvas,my_layers[0]);
-    select_feature_Tool[1]=new QgsMapToolIdentifyFeature(mMapCanvas,my_layers[1]);
-    select_feature_Tool[2]=new QgsMapToolIdentifyFeature(mMapCanvas,my_layers[2]);
-
-    feature_editors[0]=my_layers[0]->dataProvider();
-    feature_editors[1]=my_layers[1]->dataProvider();
-    feature_editors[2]=my_layers[2]->dataProvider();
-
-    connect(select_feature_Tool[0], static_cast<void (QgsMapToolIdentifyFeature::*)(const QgsFeature &)>
-            (&QgsMapToolIdentifyFeature::featureIdentified),this,&QgsGraphMap::selectFeature);
-    connect(select_feature_Tool[1], static_cast<void (QgsMapToolIdentifyFeature::*)(const QgsFeature &)>
-            (&QgsMapToolIdentifyFeature::featureIdentified),this,&QgsGraphMap::selectFeature);
-    connect(select_feature_Tool[2], static_cast<void (QgsMapToolIdentifyFeature::*)(const QgsFeature &)>
-            (&QgsMapToolIdentifyFeature::featureIdentified),this,&QgsGraphMap::selectFeature);
-}
 void QgsGraphMap::initalive()
 {
 
     QgsMapLayer* map_layer=requestImage();//
     GetNetData();
-    InitConnectMapTool();
 
 
     select_layers.append(my_layers[0]);
     select_layers.append(my_layers[1]);
     select_layers.append(my_layers[2]);
+
+
+
     layers.append(my_layers[0]);
     layers.append(my_layers[1]);
     layers.append(my_layers[2]);
     layers.append(map_layer);
-//    my_layers[0]->startEditing();
-//    my_layers[1]->startEditing();
-//    my_layers[2]->startEditing();
 
     mMapCanvas->setExtent(map_layer->extent());
     mMapCanvas->setLayers(layers);
@@ -205,14 +126,13 @@ void QgsGraphMap::initalive()
     mMapCanvas->refresh();
 
     mMapCanvas->setCurrentLayer(my_layers[0]);
-    mMapCanvas->setMapTool(select_feature_Tool[0]);
-//        mMapCanvas->setMapTool(identifyTool);
+
 }
 // 在 MainWindow.cpp 文件中实现槽函数
 QgsMapLayer* QgsGraphMap::requestImage()
 {
-//    // 获取栅格图层    auto uri = QString("file:////home/chenlang/QGisDemo/TIF/grid_map_.tif");
-    QgsRasterLayer *my_rasterlayer = new QgsRasterLayer("/home/chenlang/QGisDemo/TIF/grid_map_.tif", "Raster Layer", "gdal");
+//    // 获取栅格图层    auto uri = QString("file:////home/chenlang/soft/QGisdemo/TIF/grid_map_.tif");
+    QgsRasterLayer *my_rasterlayer = new QgsRasterLayer("/home/chenlang/soft/QGisdemo/TIF/grid_map_.tif", "Raster Layer", "gdal");
     //比例为0.15
 //    qDebug()<<my_rasterlayer->width()<<" "<<my_rasterlayer->height();
     return my_rasterlayer;
@@ -236,26 +156,7 @@ void QgsGraphMap::clearShpLayer()
 //    mMapCanvas->refresh();
 
 }
-void QgsGraphMap::setHightLight(const QgsFeature & feature)
-{
-//    qDebug()<<feature.id();
-    select_feature=const_cast<QgsFeature*>(&feature);
-//    qDebug()<<select_feature->id();
-    select_feature_id=select_feature->id();
-    highlight=new QgsHighlight(mMapCanvas,feature,my_layers[currentLayer]);
-    highlight->setFillColor(Qt::green);	// 填充颜色
-    highlight->setColor(Qt::green);	// 设置线条/描边颜色
-    highlight->update();
-//    qDebug()<<"填充";
-//    highlight->setBuffer(0.5);
-//    highlight->setBoundingRegionGranularity(0.1);
-    highlight->setBuffer(Qgis::DEFAULT_HIGHLIGHT_BUFFER_MM);	// 设置行/行程缓冲以毫米为单位
-    // DEFAULT_HIGHLIGHT_MIN_WIDTH_MM = 1.0
-    highlight->setMinWidth(Qgis::DEFAULT_HIGHLIGHT_MIN_WIDTH_MM);	// 设置最小线/笔画宽度，以毫米为单位
 
-
-
-}
 DrawingMode QgsGraphMap::getCanvasStatus(int index)
 {
     switch (index)
@@ -265,10 +166,69 @@ DrawingMode QgsGraphMap::getCanvasStatus(int index)
     case 1:
         return DrawingMode::LineMode;
     case 2:
+        return DrawingMode::CurveMode;
+    case 3:
         return DrawingMode::AreaMode;//区域模式（虚拟墙编辑）
     default:
         return DrawingMode::ForbidEditMode;
     }
+}
+void QgsGraphMap::updateAtrribute()
+{
+
+    qDebug()<<"更新字段";
+    QgsFeatureIterator point_itertor=my_layers[0]->getFeatures();
+    QgsFeature feature;
+    while(point_itertor.nextFeature(feature))
+    {
+        PointFeature point_feature;
+        point_feature.feature_id=feature.id();
+        point_feature.attribute_id=feature.id();
+//        point_feature.feature=new QgsFeature(&feature);
+        QList<QString> list=feature.attribute("lines").toString().split(' ');
+        for(auto it:list)
+        {
+            point_feature.lines.append(it.toInt());
+        }
+        point_feature.feature=feature;
+        point_feature.x=feature.attribute("x").toDouble();
+        point_feature.y=feature.attribute("y").toDouble();
+        point_feature.type=feature.attribute("type").toInt();
+        add_feature_tool->setPointFeature(feature.id(),point_feature);
+    }
+
+    QgsFeatureIterator line_itertor=my_layers[1]->getFeatures();
+    QgsFeature line_feature;
+    while(line_itertor.nextFeature(line_feature))
+    {
+        LineFeature temp_feature;
+        temp_feature.feature_id=line_feature.id();
+        temp_feature.attribute_id=line_feature.id();
+        temp_feature.feature=line_feature;
+        temp_feature.src_feature_id=line_feature.attribute("src_id").toInt();
+        temp_feature.dst_feature_id=line_feature.attribute("dst_id").toInt();
+        temp_feature.control_point_id=line_feature.attribute("control_id").toInt();
+        add_feature_tool->setLineFeature(line_feature.id(),temp_feature);
+    }
+
+    QgsFeatureIterator area_itertor=my_layers[2]->getFeatures();
+    QgsFeature area_feature;
+    while(area_itertor.nextFeature(area_feature))
+    {
+        PolgonFeature temp_feature;
+        temp_feature.feature_id=area_feature.id();
+        temp_feature.attribute_id=area_feature.id();
+        temp_feature.points=area_feature.attribute("points").toString();
+        add_feature_tool->setPolognFeature(area_feature.id(),temp_feature);
+    }
+
+
+
+}
+void QgsGraphMap::saveAttributeData()
+{
+    add_feature_tool->saveAttributeDatas();
+//    qDebug()<<"保存字段";
 }
 QgsMapLayer* QgsGraphMap::SetPointsData()
 {
@@ -308,7 +268,6 @@ QgsMapLayer* QgsGraphMap::SetLinesData()
 //    QgsSimpleLineSymbolLayer* Line_Renderer_Layer = new QgsSimpleLineSymbolLayer();
 //    Line_Renderer_Layer->setColor(Qt::red);
 //    Line_Renderer_Layer->setPenStyle(Qt::PenStyle::DotLine);
-
     // 创建线图层
     QgsVectorLayer* lineLayer = new QgsVectorLayer("LineString?crs=EPSG:4326", "LineLayer", "memory");
     lineLayer->setCrs(crs);
@@ -317,7 +276,6 @@ QgsMapLayer* QgsGraphMap::SetLinesData()
     QgsFeature lineFeature;
     QgsGeometry line = QgsGeometry::fromPolylineXY({QgsPoint(0.0, 0.0), QgsPoint(100.0, 100.0)});
     lineFeature.setGeometry(line);
-
 
     // 添加线要素到图层
     QList<QgsFeature> lineFeatureList;
@@ -359,62 +317,30 @@ void QgsGraphMap::RenderingLayers(QColor color_,double size_,QgsVectorLayer* lay
 
 void QgsGraphMap::GetNetData()//QList<QString> paths
 {
-//    dirname="/home/chenlang/soft/QGisdemo/Map/net";
-//    paths.append(dirname+"/points.shp");
-//    paths.append(dirname+"/lines.shp");
-//    paths.append(dirname+"/virtuals.shp");
+
 
     QString point_path="/home/chenlang/soft/QGisdemo/Map/net/points.shp";
     QString line_path="/home/chenlang/soft/QGisdemo/Map/net/lines.shp";
     QString virtual_path="/home/chenlang/soft/QGisdemo/Map/net/virtuals.shp";
 
-//    point_layer=new QgsVectorLayer(point_path, "point", "ogr");
-//    line_layer=new QgsVectorLayer(line_path, "line", "ogr");
-//    virtual_layer=new QgsVectorLayer(virtual_path, "virtual", "ogr");
     my_layers[0]=new QgsVectorLayer(point_path, "point", "ogr");
     my_layers[1]=new QgsVectorLayer(line_path, "line", "ogr");
     my_layers[2]=new QgsVectorLayer(virtual_path, "virtual", "ogr");
 
 //    RenderingLayers();
     RenderingLayers(Qt::red,5,my_layers[0]);
-    RenderingLayers(QColor(0,0,255,180),0.5,my_layers[1]);
+    RenderingLayers(QColor(0,0,255,180),0.8,my_layers[1]);
     RenderingLayers(Qt::red,1,my_layers[2]);
-//    QgsProject::instance()->addMapLayer(point_layer);
-//    QgsProject::instance()->addMapLayer(line_layer);
-//    QgsProject::instance()->addMapLayer(virtual_layer);
 
-//    for(auto path:paths)
-//    {
-//        QgsVectorLayer *shpLayer=new QgsVectorLayer(path, "layer", "ogr");
+//    my_layers[0]->setCustomProperty();
 
-//        if (!shpLayer->isValid()) {
-//            qDebug() <<path <<"Error: Invalid layer!";
-//            return;
-//        }
-//        if(shpLayer->geometryType()==QgsWkbTypes::PointGeometry)
-//        {
-////            SaveShp("/home/chenlang/QGisDemo/Map/savenet","/points.shp",shpLayer);
-//            RenderingLayers(Qt::red,2,shpLayer);
-//            point_layer=shpLayer;
 
-//        }
-//        else if(shpLayer->geometryType()==QgsWkbTypes::LineGeometry)
-//        {
-//            RenderingLayers(QColor(0,0,255,180),0.5,shpLayer);
-//        }
-//        else if(shpLayer->geometryType()==QgsWkbTypes::PolygonGeometry)
-//        {
-//            RenderingLayers(Qt::red,1,shpLayer);
-//        }
-//        readLayers.append(shpLayer);
-//        QgsProject::instance()->addMapLayer(shpLayer);
-//    }
+
+
+
 
 }
-//void QgsGraphMap::MousePressEvent(QMouseEvent *event)
-//{
-////     QPointF point = mapToScene(event->pos());
-//}
+
 QgsMapLayer* QgsGraphMap::addRasterSlot()
 {
     QString urlWithParams;

@@ -9,32 +9,23 @@ QGisDemo::QGisDemo(QWidget *parent) :
 
 
     Gis_map=ui->qgsMap;
-//    Gis_map->initalive();
-//    connect(ui->point_button,&QPushButton::clicked,Gis_map,&QgsGraphMap::clear);
-//    connect(this,&QGisDemo::selectLayer,Gis_map,&QgsGraphMap::selectShpLayer);
-    connect(this,&QGisDemo::curLayerChange,Gis_map,&QgsGraphMap::setCurrentLayer);
-    connect(this,&QGisDemo::curManvasStatusChange,Gis_map,&QgsGraphMap::setCanvasStatus);
-    connect(ui->layer_combox,QOverload<int>::of(&QComboBox::currentIndexChanged),[=](int value)
-    {
-        emit curLayerChange(value);
-        ui->layer_combox->setDisabled(true);
-        ui->select_combox->setDisabled(true);
-    });
+    connect(this,&QGisDemo::curManvasStatusChange,Gis_map,&QgsGraphMap::setToolStatus);
     connect(ui->select_combox,QOverload<int>::of(&QComboBox::currentIndexChanged),[=](int value)
     {
+        if(value!=0)
+        {
+            ui->delete_button->setDisabled(true);
+        }
+        else
+        {
+            ui->delete_button->setDisabled(false);
+        }
         emit curManvasStatusChange(value);
-        ui->select_combox->setDisabled(true);
-        ui->layer_combox->setDisabled(true);
+
     });
-//    connect(ui->layer_combox,QOverload<int>::of(&QComboBox::currentIndexChanged),Gis_map,&QgsGraphMap::setCurrentLayer);
-//    connect(ui->select_combox,QOverload<int>::of(&QComboBox::currentIndexChanged),Gis_map,&QgsGraphMap::setCanvasStatus);
     connect(this,&QGisDemo::DeleteFeature,Gis_map,&QgsGraphMap::deleteFeature);
-    connect(this,&QGisDemo::addFeature,Gis_map,&QgsGraphMap::on_edit_button_clicked);
-
-//    connect(ui->select_combox,&QComboBox::currentIndexChanged,Gis_map,&QgsGraphMap::GetFunction);
-//    connect(ui->layer_combox,&QComboBox::currentIndexChanged,Gis_map,&QgsGraphMap::SelectLayer);
-//    connect(ui->select_button,&QPushButton::clicked,Gis_map,&QgsGraphMap::selectShpLayer);
-
+    connect(this,&QGisDemo::AllClear,Gis_map,&QgsGraphMap::allClear);
+    connect(this,&QGisDemo::SaveAttribute,Gis_map,&QgsGraphMap::saveAttributeData);
 }
 
 QGisDemo::~QGisDemo()
@@ -44,13 +35,17 @@ QGisDemo::~QGisDemo()
 void QGisDemo::on_delete_button_clicked()
 {
     emit DeleteFeature();
-//    qDebug()<<123;
 }
-void QGisDemo::on_edit_button_clicked()
+
+void QGisDemo::on_all_clear_button_clicked()
 {
-    ui->layer_combox->setDisabled(false);
-    ui->select_combox->setDisabled(false);
-    emit addFeature();
+    emit AllClear();
 }
-
-
+void QGisDemo::on_save_attribute_button_clicked()
+{
+    emit SaveAttribute();
+}
+void QGisDemo::on_min_path_clicked()
+{
+    qDebug()<<"最小路径";
+}

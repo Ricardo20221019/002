@@ -45,7 +45,6 @@ class QgsGraphMap : public QWidget
 public:
     explicit QgsGraphMap(QWidget *parent);
 
-    void InitConnectMapTool();
     void initalive();
     QgsMapLayer* SetPointsData();
     QgsMapLayer* SetLinesData();
@@ -57,21 +56,24 @@ public:
 
 
 signals:
-    void deletefeature(QgsFeatureId id);
-
+    void deletefeature();
+    void allClearFeatures();
 protected:
     void mousePressEvent(QMouseEvent *event) override
     {
-//        qDebug()<<event->x();
+
     }
 public slots:
 //    void MousePressEvent(QMouseEvent *event);
      void Show_Coordinate(const QgsPointXY &p);
-     void setCurrentLayer(int index);
-     void setCanvasStatus(int index);
+     void setToolStatus(int index);
      void deleteFeature();
-     void on_edit_button_clicked();
-     void selectFeature(const QgsFeature& feature);
+     void allClear();
+     void updateAtrribute();
+
+     void saveAttributeData();
+//     void on_edit_button_clicked();
+//     void selectFeature(const QgsFeature& feature);
 
 
 
@@ -87,30 +89,22 @@ private:
      QgsFillSymbol* GetVirtualsSymbol(QColor color_,double size_,QgsVectorLayer* virtuals);
      void resizeEvent(QResizeEvent*);
      void clearShpLayer();
-     void setHightLight(const QgsFeature & feature);
      DrawingMode getCanvasStatus(int index);
+
 
 
 
 
 private:
     QWidget *centralWidget;
-    QgsMapToolPan * mapToolPan;
-    QgsMapToolIdentify *identifyTool;
-    std::map<int,QgsMapToolIdentifyFeature*>select_feature_Tool;
-    std::map<int,QgsVectorDataProvider*> feature_editors;
     MyFeatureTool* add_feature_tool;
 
-//    QgsMapToolIdentifyFeature *my_pidentifyTool;
-//    QgsMapToolIdentifyFeature *my_lidentifyTool;
-//    QgsMapToolIdentifyFeature *my_videntifyTool;
-//    QgsMapToolEmitPoint* mToolEmitPoint;
     QgsMapCanvas *mMapCanvas;
     QList<QgsMapLayer*> layers;
     QList<QgsMapLayer*> select_layers;
     QgsFeatureIds deleteFeatureIds;
-    QgsFeature *select_feature=nullptr;
-    int select_feature_id;
+//    QgsFeature *select_feature=nullptr;
+//    int select_feature_id;
 //    QList<QgsVectorLayer*> readLayers;
 
     std::map<int,QgsVectorLayer *> my_layers;
