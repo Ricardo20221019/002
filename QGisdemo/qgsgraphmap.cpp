@@ -21,7 +21,6 @@ QgsGraphMap::QgsGraphMap(QWidget *parent) : QWidget(parent)
     add_feature_tool->addLayers(my_layers[0],0);
     add_feature_tool->addLayers(my_layers[1],1);
     add_feature_tool->addLayers(my_layers[2],2);
-    add_feature_tool->getALLFeaturesId();
     connect(this,&QgsGraphMap::deletefeature,add_feature_tool,&MyFeatureTool::deleteFeature);
 //    connect(add_feature_tool,&MyFeatureTool::curLayerChange,this,&QgsGraphMap::setCurrentLayer);
     connect(this,&QgsGraphMap::allClearFeatures,add_feature_tool,&MyFeatureTool::allClear);

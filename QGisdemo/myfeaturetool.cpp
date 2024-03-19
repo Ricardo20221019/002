@@ -13,10 +13,7 @@ MyFeatureTool::~MyFeatureTool()
 {
 
 }
-void MyFeatureTool::initAllVertexs()
-{
 
-}
 void MyFeatureTool::canvasPressEvent( QgsMapMouseEvent* e )
 {
     clearHighLight();
@@ -333,100 +330,15 @@ int MyFeatureTool::addFeature(QgsVectorLayer*layer,QgsFeature * feature)
 
 }
 
-void MyFeatureTool::addCurve(QgsPoint point)
-{
-    curve_points.append(point);
-    if(curve_points.size()==3)
-    {
-//        QgsFeature* feature = new QgsFeature( all_layers[1]->fields(), 0 );
-        QgsFeature *feature=new QgsFeature(all_layers[1]->fields(),0);
-        QgsCircularString curve1(curve_points.at(0),curve_points.at(1),curve_points.at(2));
-        QgsGeometry *geometry=new QgsGeometry(&curve1);
-//        geometry.set(&curve1);
-        feature->setGeometry(*geometry);
-        all_layers[1]->startEditing();
-        addFeature(all_layers[1],feature);
-        all_layers[1]->commitChanges(true);
-        qDebug()<<"添加曲线成功！";
-        curve_points.clear();
-    }
 
-
-
-
-
-
-    //QgsWkbTypes::CompoundCurve
-//    QgsFeature* curve_feature=new QgsFeature();
-//    curve_feature->setGeometry(QgsWkbTypes::CompoundCurve);
-
-//    QgsCurve curve;
-//    curve
-//    QgsFeature feature;
-//    QgsGeometry *g;
-//    g=QgsGeometry::from
-}
 void MyFeatureTool::addLayers(QgsMapLayer* layer,int index)
 {
     my_layers.append(layer);
     all_layers[index]=qobject_cast<QgsVectorLayer*>(layer);
 }
-void MyFeatureTool::catFeatureAtrribute(const QgsFeature &feature,QString des)
-{
-    qDebug().noquote()<<des;
-    if(feature.geometry().type()==QgsWkbTypes::LineGeometry)
-    {
-        qDebug().noquote()<<feature.id()<<" 字段:"<<feature.attribute("id")<<feature.attribute("src_id")<<" "<<feature.attribute("dst_id");
-    }
-    else if(feature.geometry().type()==QgsWkbTypes::PointGeometry)
-    {
-        qDebug().noquote()<<feature.id()<<" 字段:"<<feature.attribute("id");
-        qDebug()<<feature.attributes();
-    }
-    qDebug();
-}
-void MyFeatureTool::getALLFeaturesId()
-{
-//    QgsFeatureIterator point_featureIterator=all_layers[0]->getFeatures();
-    QgsFeature point_feature,line_feature,polon_feature;
-//    QList list;
-//    while(point_featureIterator.nextFeature(point_feature))
-//    {
-//        list.append(point_feature.id());
-//    }
-
-    QgsFeatureIterator line_featureIterator=all_layers[1]->getFeatures();
-    all_line_vertexs.clear();
-    while(line_featureIterator.nextFeature(line_feature))
-    {
-        all_line_vertexs[line_feature.id()].append(line_feature.attribute("src_id").toInt());
-        all_line_vertexs[line_feature.id()].append(line_feature.attribute("dst_id").toInt());
-    }
 
 
-    QgsFeatureIterator polon_featureIterator=all_layers[2]->getFeatures();
-    all_virtual_vertexs.clear();
-    while(polon_featureIterator.nextFeature(polon_feature))
-    {
-        QList<QString> ids=polon_feature.attribute("points").toString().split(' ');
-        for(auto it:ids)
-        {
-            all_virtual_vertexs[polon_feature.id()].append(it.toInt());
-        }
-    }
 
-//    all_layers[0]->startEditing();
-}
-int MyFeatureTool::getMaxAttributeId(const QList<int>& list)
-{
-//    capture_point_ids;
-    int max_id=0;
-    for(auto it:list)
-    {
-        if(it>max_id) max_id=it;
-    }
-    return max_id;
-}
 
 
 int MyFeatureTool::getIndex(QgsWkbTypes::GeometryType value)
@@ -469,7 +381,7 @@ void MyFeatureTool::setPolognFeature(int id,PolgonFeature area_feature)
     all_areas.insert(id,area_feature);
 }
 
-void MyFeatureTool::disAllFeature()
+void MyFeatureTool::displayAllFeature()
 {
     for(auto it=all_points.begin();it!=all_points.end();++it)
     {
@@ -614,11 +526,11 @@ void MyFeatureTool::allClear()
 
     all_layers[1]->selectAll();
     all_layers[1]->deleteFeatures(all_layers[1]->selectedFeatureIds());
-    all_line_vertexs.clear();
+
 
     all_layers[2]->selectAll();
     all_layers[2]->deleteFeatures(all_layers[2]->selectedFeatureIds());
-    all_virtual_vertexs.clear();
+
 
     all_layers[0]->commitChanges(true);
     all_layers[1]->commitChanges(true);
@@ -626,10 +538,10 @@ void MyFeatureTool::allClear()
 
 
     clearHighLight();
-//    all_points_attribute_ids.clear();
-//    all_features.clear();
-//    all_line_vertexs_ids.clear();
-//    all_points_id.clear();
+
+
+
+
     all_points.clear();
     all_lines.clear();
     all_control_points.clear();
@@ -643,80 +555,8 @@ void MyFeatureTool::allClear()
 
 
 }
-void MyFeatureTool::deleteSingleFeature()
-{
-
-}
-void MyFeatureTool::getFeatureContainsId(QgsWkbTypes::GeometryType geometry_type,int id_)
-{
-
-    QgsFeatureIterator featureIterator;
-    QgsFeature cur_feature;
-    if(geometry_type==QgsWkbTypes::PointGeometry)
-    {
-        featureIterator=all_layers[0]->getFeatures();
-        while(featureIterator.nextFeature(cur_feature))
-        {
-//            qDebug()<<"查找到点："<<cur_feature.id();
-            if(cur_feature.attribute("id").toInt()==id_)
-            {
-//                ids_list.append(cur_feature.id());
-                all_ids[QgsWkbTypes::PointGeometry].append(cur_feature.id());
-//                qDebug()<<"找到的点："<<all_ids[QgsWkbTypes::PointGeometry];
-                //需要增加线段查找逻辑
-                QList<QString> list=cur_feature.attribute("lines").toString().split(' ');
-                for(auto it:list)
-                {
-//                    qDebug()<<"查找线段"<<it;
-                    getFeatureContainsId(QgsWkbTypes::LineGeometry,it.toInt());
-//                    qDebug()<<all_ids[QgsWkbTypes::LineGeometry].size();
-                }
-                break;
-            }
-        }
-    }
-    else if(geometry_type==QgsWkbTypes::LineGeometry)
-    {
-        featureIterator=all_layers[1]->getFeatures();
-        while(featureIterator.nextFeature(cur_feature))
-        {
-            if(cur_feature.attribute("id").toInt()==id_)
-            {
-                all_ids[QgsWkbTypes::LineGeometry].append(cur_feature.id());
-                //需要增加点查找逻辑
-//                qDebug()<<"找到的线："<<all_ids[QgsWkbTypes::LineGeometry];
-                break;
-
-            }
-        }
-    }
-    else if(geometry_type==QgsWkbTypes::PolygonGeometry)
-    {
-        featureIterator=all_layers[2]->getFeatures();
-        while(featureIterator.nextFeature(cur_feature))
-        {
-            if(cur_feature.attribute("id").toInt()==id_)
-            {
-                all_ids[QgsWkbTypes::PolygonGeometry].append(cur_feature.id());
-//                qDebug()<<"找到的虚拟墙："<<all_ids[QgsWkbTypes::PolygonGeometry];
-                break;
-            }
-        }
-    }
 
 
-}
-int MyFeatureTool::getPointFeatureId(int id_)
-{
-    for(auto it:all_points)
-    {
-        if(it.attribute_id==id_) return it.feature_id;
-    }
-}
-void MyFeatureTool::getFeatureContainsId2(QgsWkbTypes::GeometryType geometry_type,int id_)
-{
-
-}
 
 void MyFeatureTool::startCapturing()
 {
@@ -754,7 +594,7 @@ void MyFeatureTool::addPoint(const QgsPoint &point)
     all_points[feature.id()]=temp_point;
 
 
-//    all_points_id[feature.id()]=point;//记录点的id ：坐标
+
 //    emit curLayerChange(getCanvasStatus(tool_status));
 
 }
@@ -814,7 +654,7 @@ void MyFeatureTool::drawLineOrCurve()
     //设置线属性
     int index=all_lines.size()==0?0:all_lines[all_lines.lastKey()].attribute_id+1;
     feature->setAttribute("id",index);
-//                    int dst_id=getMaxAttributeId(all_points_attribute_ids);
+
 
 //    int dst_id=all_points[all_points.lastKey()].feature_id;
     int dst_id=capture_point_ids[capture_point_ids.size()-1];
@@ -855,13 +695,6 @@ void MyFeatureTool::drawLineOrCurve()
     capture_point_List.removeAt(0);
 }
 
-int MyFeatureTool::nextPoint(const QgsPoint &point)
-{
-    QgsVectorLayer *curLayer=qobject_cast<QgsVectorLayer *>(mCanvas->currentLayer());
-    if(!curLayer) return -1;
-
-    return 0;
-}
 QgsRubberBand* MyFeatureTool::createRubberBand( QgsWkbTypes::GeometryType geometryType,bool alternativeBand )//QgsWkbTypes geometryType /*= QGis::Line*/, bool alternativeBand /*= false */
 {
     QSettings settings;
@@ -948,68 +781,8 @@ int MyFeatureTool::getCanvasStatus(DrawingMode mode)
         return 3;
     }
 }
-void MyFeatureTool::updateAllFeatureIds(QgsWkbTypes::GeometryType type_,int delete_id)
-{
-    auto itertor_=all_features[type_].find(delete_id);
-    if(itertor_!=all_features[type_].end())//删除被删除要素id
-    {
-        all_features[type_].erase(itertor_);
-    }
 
-    auto after_itertor=all_features[type_].lowerBound(delete_id);
-    for(auto it=after_itertor;it!=all_features[type_].end();++it)//更新要素id
-    {
-        int new_feature_id=it.key();
-        QgsFeature *new_feature=it.value();
 
-        all_features[type_].insert(new_feature_id-1,new_feature);
-    }
-
-    all_features[type_].remove(all_features[type_].lastKey());//把最后一个删除
-}
-void MyFeatureTool::updateAllLinesVertexIds(int change_id)
-{
-    auto itertor_=all_line_vertexs_ids.find(change_id);
-    if(itertor_!=all_line_vertexs_ids.end())
-    {
-        all_line_vertexs_ids.erase(itertor_);
-    }
-
-    auto after_itertor=all_line_vertexs_ids.lowerBound(change_id);
-    for(auto it=after_itertor;it!=all_line_vertexs_ids.end();++it)//更新要素id
-    {
-        int new_feature_id=it.key();
-        QPair<int,int> temp_pair;
-        temp_pair.first=it.value().first;
-        temp_pair.first=it.value().second;
-
-        all_line_vertexs_ids.insert(new_feature_id-1,temp_pair);
-    }
-    all_line_vertexs_ids.remove(all_line_vertexs_ids.lastKey());//把最后一个删除
-    qDebug()<<"目前剩下线数量："<<all_line_vertexs_ids.size();
-
-}
-void MyFeatureTool::updateAllPointsIds(int change_id)
-{
-    auto itertor_=all_points_id.find(change_id);
-    if(itertor_!=all_points_id.end())
-    {
-        all_points_id.erase(itertor_);
-    }
-
-    auto after_itertor=all_points_id.lowerBound(change_id);
-    for(auto it=after_itertor;it!=all_points_id.end();++it)//更新要素id
-    {
-        int new_featureid=after_itertor.key();
-        QgsPoint point;
-        point.setX(it.value().x());
-        point.setY(it.value().y());
-
-        all_points_id.insert(new_featureid-1,point);
-    }
-    all_points_id.remove(all_points_id.lastKey());
-//     qDebug()<<"目前剩下点数量："<<all_points_id.size();
-}
 
 void MyFeatureTool::updateAllPoints(int delete_point,QList<int> delete_lines)
 {

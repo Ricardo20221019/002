@@ -26,6 +26,9 @@ QGisDemo::QGisDemo(QWidget *parent) :
     connect(this,&QGisDemo::DeleteFeature,Gis_map,&QgsGraphMap::deleteFeature);
     connect(this,&QGisDemo::AllClear,Gis_map,&QgsGraphMap::allClear);
     connect(this,&QGisDemo::SaveAttribute,Gis_map,&QgsGraphMap::saveAttributeData);
+
+
+
 }
 
 QGisDemo::~QGisDemo()

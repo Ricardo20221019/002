@@ -14,6 +14,7 @@
 #include <QFileInfo>
 #include <QFileDialog>
 #include <QMessageBox>
+#include <gdal.h>
 
 #include "qgsgraphmap.h"
 namespace Ui {
