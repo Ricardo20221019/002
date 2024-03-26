@@ -7,6 +7,7 @@ MyFeatureTool::MyFeatureTool(QgsMapCanvas* canvas)
     mRubberBand = 0;
     mTempRubberBand = 0;
     select_Tool=new QgsMapToolIdentify(canvas);
+    gdal_tool=new MyGDALTool();
 
 }
 MyFeatureTool::~MyFeatureTool()
@@ -33,27 +34,31 @@ void MyFeatureTool::canvasPressEvent( QgsMapMouseEvent* e )
             {
                 moving_feature_id=features.first().mFeature.id();
             }
-            qDebug()<<features.first().mFeature.attributes();
+//            qDebug()<<features.first().mFeature.attributes();
             if(features.first().mFeature.geometry().type()==QgsWkbTypes::PointGeometry)
             {
+                qDebug()<<"选中点id:"<<features.first().mFeature.id();
+                qDebug()<<"选中点的坐标："<<all_points[features.first().mFeature.id()].x<<" "<<all_points[features.first().mFeature.id()].y;
 
 
-                qDebug()<<"选中点id:"<<features.first().mFeature.id()<<" feature_id"<<all_points[features.first().mFeature.id()].feature_id
-                       <<" lines:"<<all_points[features.first().mFeature.id()].lines;
+//                qDebug()<<"选中点id:"<<features.first().mFeature.id()<<" feature_id"<<all_points[features.first().mFeature.id()].feature_id
+//                       <<" lines:"<<all_points[features.first().mFeature.id()].lines;
             }
             else if(features.first().mFeature.geometry().type()==QgsWkbTypes::LineGeometry)
             {
-                if(all_lines[features.first().mFeature.id()].control_point_id!=-1)
-                {
-                    qDebug()<<"选中曲线id:"<<features.first().mFeature.id()<<" feature_id"<<all_lines[features.first().mFeature.id()].feature_id
-                           <<" src_id:"<<all_lines[features.first().mFeature.id()].src_feature_id<<" dst_id"<<all_lines[features.first().mFeature.id()].dst_feature_id
-                          <<" control_point"<<all_control_points[features.first().mFeature.id()].x() << all_control_points[features.first().mFeature.id()].y();
-                }
-                else
-                {
-                    qDebug()<<"选中直线id:"<<features.first().mFeature.id()<<" feature_id"<<all_lines[features.first().mFeature.id()].feature_id
-                           <<" src_id:"<<all_lines[features.first().mFeature.id()].src_feature_id<<" dst_id"<<all_lines[features.first().mFeature.id()].dst_feature_id;
-                }
+                qDebug()<<"选中直线id:"<<features.first().mFeature.id()<<" length:"<<all_lines[features.first().mFeature.id()].length;
+                qDebug()<<"src:"<<all_lines[features.first().mFeature.id()].src_feature_id<< " dst:"<<all_lines[features.first().mFeature.id()].dst_feature_id;
+//                if(all_lines[features.first().mFeature.id()].control_point_id!=-1)
+//                {
+//                    qDebug()<<"选中曲线id:"<<features.first().mFeature.id()<<" feature_id"<<all_lines[features.first().mFeature.id()].feature_id
+//                           <<" src_id:"<<all_lines[features.first().mFeature.id()].src_feature_id<<" dst_id"<<all_lines[features.first().mFeature.id()].dst_feature_id
+//                          <<" control_point"<<all_control_points[features.first().mFeature.id()].x() << all_control_points[features.first().mFeature.id()].y();
+//                }
+//                else
+//                {
+//                    qDebug()<<"选中直线id:"<<features.first().mFeature.id()<<" feature_id"<<all_lines[features.first().mFeature.id()].feature_id
+//                           <<" src_id:"<<all_lines[features.first().mFeature.id()].src_feature_id<<" dst_id"<<all_lines[features.first().mFeature.id()].dst_feature_id;
+//                }
 
             }
 //            QgsWkbTypes::MultiLineString
@@ -64,13 +69,81 @@ void MyFeatureTool::canvasPressEvent( QgsMapMouseEvent* e )
         }
 
     }
+    else if(tool_status==DrawingMode::FindPath)
+    {
+        if(finding_status)
+        {
+            QgsPointXY temp_point=toLayerCoordinates( all_layers[0], mCanvas->mapSettings().mapToPixel().toMapCoordinates( e->pos() ) );
+            QgsPoint savePoint;
+            savePoint.setX(temp_point.x());
+            savePoint.setY(temp_point.y());
+            qDebug()<<"当前坐标："<<temp_point.x()<<temp_point.y();
+            QList<QgsMapToolIdentify::IdentifyResult> features=select_Tool->identify(e->x(),e->y(),my_layers,QgsMapToolIdentify::TopDownStopAtFirst);
+            if(!find_status)//false 设置起点
+            {
+
+                if(features.size()>0 && features.first().mFeature.geometry().type()==QgsWkbTypes::PointGeometry)
+                {
+                    gdal_tool->setTargetPointId(features.first().mFeature.id(),0);
+    //                features.size()>0 && features.first().mFeature.geometry()
+                }
+                else//插点
+                {
+                    qDebug()<<"先外点："<<savePoint.x()<<" "<<savePoint.y();
+                    gdal_tool->setFindPathPoint(savePoint.x(),savePoint.y(),0);//设置线段外起点
+                    setStartTestHighLight(savePoint);
+//                    insertPoint(0);
+
+
+
+
+
+    //                features.first().mFeature.geometry().closestSegmentWithContext(savePoint);
+
+                }
+    //            emit findPathStartPoint(temp_point.x(),temp_point.y());
+    //            gdal_tool->setFindPathStartPoint(temp_point.x(),temp_point.y());
+    //            all_layers[1]->getFeature(0).geometry().closestSegmentWithContext()
+                find_status=true;
+    //            clearTestHighLight();
+
+            }
+            else//true 设置终点
+            {
+
+                if(features.size()>0 && features.first().mFeature.geometry().type()==QgsWkbTypes::PointGeometry)
+                {
+                    gdal_tool->setTargetPointId(features.first().mFeature.id(),1);
+                }
+                else//插点
+                {
+                    gdal_tool->setFindPathPoint(savePoint.x(),savePoint.y(),1);//设置线段外目标点
+                    setTargetTestHighLight(savePoint);
+
+//                    insertPoint(1);
+                }
+
+                find_status=false;
+                finding_status=false;
+
+
+            }
+
+        }
+
+
+
+
+    }
     else
     {
+
 //        QDateTime timeCurrent4 = QDateTime::currentDateTime(); // 获取当前时间
 //        QString timeStr4 = timeCurrent4.toString("[yy-MM-dd hh:mm:ss.zzz]"); // 转换自定义格式精确到毫秒
 //        qDebug()<<"4:"<<timeStr4;
 
         QgsPointXY temp_point=toLayerCoordinates( all_layers[0], mCanvas->mapSettings().mapToPixel().toMapCoordinates( e->pos() ) );
+
         QgsPoint savePoint;
         savePoint.setX(temp_point.x());
         savePoint.setY(temp_point.y());
@@ -170,9 +243,9 @@ void MyFeatureTool::canvasPressEvent( QgsMapMouseEvent* e )
                 feature->setGeometry( *g );
 
 
-                int area_feature_id=all_areas.empty()?0:all_areas[all_areas.lastKey()].attribute_id+1;
+//                int area_feature_id=all_areas.empty()?0:all_areas[all_areas.lastKey()].attribute_id+1;
 
-                feature->setAttribute("id",area_feature_id);
+//                feature->setAttribute("id",area_feature_id);
                 QString points_str=feature->attribute("points").toString();
                 for(auto it:capture_point_ids)
                 {
@@ -191,7 +264,7 @@ void MyFeatureTool::canvasPressEvent( QgsMapMouseEvent* e )
                 stopCapturing();
 
                 PolgonFeature temp_area;
-                temp_area.attribute_id=area_feature_id;
+//                temp_area.attribute_id=area_feature_id;
                 temp_area.feature_id=feature->id();
                 temp_area.points=points_str;
 
@@ -261,6 +334,7 @@ void MyFeatureTool::canvasMoveEvent( QgsMapMouseEvent *e )
                     {
                         QgsPoint control_point((savePoint.x()+dst_point.x())*0.5,(savePoint.y()+dst_point.y())*0.5+10);
                         QgsCircularString *curve1=new QgsCircularString(savePoint,control_point,dst_point);
+
                         new_line_geometry.set(curve1);
                     }
 
@@ -285,6 +359,7 @@ void MyFeatureTool::canvasMoveEvent( QgsMapMouseEvent *e )
                 }
 
                 all_layers[1]->changeGeometry(it,new_line_geometry,true);
+                all_lines[it].length=new_line_geometry.length();//更新长度
                 mCanvas->refresh();
                 capture_point_List.clear();
             }
@@ -301,6 +376,7 @@ void MyFeatureTool::canvasMoveEvent( QgsMapMouseEvent *e )
                 QgsGeometry newgeometry(curve1);
 //                all_lines[moving_feature_id].feature.setGeometry(newgeometry);
                 all_layers[1]->changeGeometry(moving_feature_id,newgeometry,true);
+                all_lines[moving_feature_id].length=newgeometry.length();
                 setHightLight(all_layers[1]->getFeature(moving_feature_id));
             }
         }
@@ -314,17 +390,17 @@ void MyFeatureTool::canvasMoveEvent( QgsMapMouseEvent *e )
 }
 int MyFeatureTool::addFeature(QgsVectorLayer*layer,QgsFeature * feature)
 {
-    QDateTime timeCurrent4 = QDateTime::currentDateTime(); // 获取当前时间
-    QString timeStr4 = timeCurrent4.toString("[yy-MM-dd hh:mm:ss.zzz]"); // 转换自定义格式精确到毫秒
-    qDebug()<<"4:"<<timeStr4;
+//    QDateTime timeCurrent4 = QDateTime::currentDateTime(); // 获取当前时间
+//    QString timeStr4 = timeCurrent4.toString("[yy-MM-dd hh:mm:ss.zzz]"); // 转换自定义格式精确到毫秒
+//    qDebug()<<"4:"<<timeStr4;
 
     QgsVectorDataProvider *provider = layer->dataProvider();
     provider->addFeature(*feature);
     layer->commitChanges(true);
 //    layer->addFeature(*feature);
-    QDateTime timeCurrent5 = QDateTime::currentDateTime(); // 获取当前时间
-    QString timeStr5 = timeCurrent5.toString("[yy-MM-dd hh:mm:ss.zzz]"); // 转换自定义格式精确到毫秒
-    qDebug()<<"5:"<<timeStr5;
+//    QDateTime timeCurrent5 = QDateTime::currentDateTime(); // 获取当前时间
+//    QString timeStr5 = timeCurrent5.toString("[yy-MM-dd hh:mm:ss.zzz]"); // 转换自定义格式精确到毫秒
+//    qDebug()<<"5:"<<timeStr5;
 
     mCanvas->refresh();
 
@@ -336,10 +412,94 @@ void MyFeatureTool::addLayers(QgsMapLayer* layer,int index)
     my_layers.append(layer);
     all_layers[index]=qobject_cast<QgsVectorLayer*>(layer);
 }
+void MyFeatureTool::findCurShortestPath()
+{
+    gdal_tool->initGDAL();
+    gdal_tool->vectorToGraph();
+
+    //    gdal_tool->getPointOnLine();
+    if(!gdal_tool->checkToolStatus())
+    {
+        qDebug()<<"数据不完整，探索失败！";
+        return;
+    }
+    std::vector<int> path= gdal_tool->getShortestPath();
+
+    qDebug()<<"最短路径："<<path.size();
+    for(auto it:path)
+    {
+        qDebug().noquote()<<it<<" ";
+    }
+    gdal_tool->allClear();
+    if(path.empty())
+    {
+        qDebug()<<"不存在路径！";
+        return;
+    }
+    setPathHighLight(path);
 
 
 
 
+}
+
+void MyFeatureTool::insertPoint(int index)
+{
+
+//    QgsPoint insert_Point= gdal_tool->getPointOnLine();//获取垂足坐标
+//    int delete_line_id=gdal_tool->getSelectLineId();//获取最近线段id
+//    QgsPoint src_point(all_points[all_lines[delete_line_id].src_feature_id].x,all_points[all_lines[delete_line_id].src_feature_id].y);
+//    QgsPoint dst_point(all_points[all_lines[delete_line_id].dst_feature_id].x,all_points[all_lines[delete_line_id].dst_feature_id].y);
+//    int set_point_id=-1;
+//    if(gdal_tool->getFindPointStatus())//需要插入点
+//    {
+//        capture_point_ids.clear();
+//        capture_point_List.clear();
+//        qDebug()<<"找到垂足："<<insert_Point.x()<<" "<<insert_Point.y();
+//        //删除直线
+
+
+
+//        startCapturing();
+//        tool_status=DrawingMode::LineMode;
+//        //插入点
+//        all_layers[0]->startEditing();
+//        startCapturing();
+//        capture_point_ids.append(all_lines[delete_line_id].src_feature_id);
+//        capture_point_List.append( src_point );
+//        capture_point_List.append(insert_Point);
+//        addPoint(insert_Point);
+////            连接
+//        all_layers[0]->commitChanges(true);
+//        drawLineOrCurve();
+//        capture_point_List.append(dst_point);
+//        capture_point_ids.append(all_lines[delete_line_id].dst_feature_id);
+//        drawLineOrCurve();
+//        tool_status=DrawingMode::FindPath;
+//        qDebug()<<"插入点成功！";
+//        stopCapturing();
+//        all_layers[1]->commitChanges(true);
+
+//        setHightLight(all_layers[1]->getFeature(delete_line_id));
+//        deleteFeature();
+//        clearHighLight();
+//        set_point_id=all_points.lastKey();
+//    }
+//    else
+//    {
+//        if(insert_Point==src_point)
+//        {
+//            set_point_id=all_lines[delete_line_id].src_feature_id;
+//        }
+//        else
+//        {
+//            set_point_id=all_lines[delete_line_id].dst_feature_id;
+//        }
+//        qDebug()<<"不需要插入点";
+//    }
+
+//    gdal_tool->setTargetPointId(set_point_id,index);
+}
 
 int MyFeatureTool::getIndex(QgsWkbTypes::GeometryType value)
 {
@@ -366,6 +526,30 @@ void MyFeatureTool::clearHighLight()
         select_attributte_id=-1;
         select_feature_type=QgsWkbTypes::NullGeometry;
 //        qDebug()<<"ok";
+    }
+}
+void MyFeatureTool::clearPathHighLight()
+{
+    if(!path_highlight.empty())
+    {
+        for(int i=0;i<path_highlight.size();++i)
+        {
+            delete path_highlight[i];
+        }
+        path_highlight.clear();
+    }
+}
+void MyFeatureTool::clearTestHighLight()
+{
+    if(start_highlight)
+    {
+        delete start_highlight;
+        start_highlight=nullptr;
+    }
+    if(target_highlight)
+    {
+        delete target_highlight;
+        target_highlight=nullptr;
     }
 }
 void MyFeatureTool::setPointFeature(int id,PointFeature point_feature)
@@ -410,6 +594,10 @@ void MyFeatureTool::saveAttributeDatas()
         all_layers[0]->changeAttributeValue(it.feature_id,all_layers[0]->getFeature(it.feature_id).fieldNameIndex("id"),QString::number(it.feature_id));
         all_layers[0]->changeAttributeValue(it.feature_id,all_layers[0]->getFeature(it.feature_id).fieldNameIndex("type"),QString::number(it.type));
         all_layers[0]->changeAttributeValue(it.feature_id,all_layers[0]->getFeature(it.feature_id).fieldNameIndex("lines"),listToQString( it.lines));
+//        QgsPointXY point(it.x,it.y);
+//        QgsPointXY tem_point=toMapCoordinates(all_layers[0],point);
+//        qDebug()<<"保存的点："<< it.feature_id<<" "<<tem_point.x()<<" "<<tem_point.y();
+
         all_layers[0]->changeAttributeValue(it.feature_id,all_layers[0]->getFeature(it.feature_id).fieldNameIndex("x"),it.x);
         all_layers[0]->changeAttributeValue(it.feature_id,all_layers[0]->getFeature(it.feature_id).fieldNameIndex("y"),it.y);
 //        all_layers[0]->changeAttributeValue(it.feature_id,"id",it.feature_id);
@@ -420,6 +608,8 @@ void MyFeatureTool::saveAttributeDatas()
         all_layers[1]->changeAttributeValue(it.feature_id,all_layers[1]->getFeature(it.feature_id).fieldNameIndex("src_id"),QString::number(it.src_feature_id));
         all_layers[1]->changeAttributeValue(it.feature_id,all_layers[1]->getFeature(it.feature_id).fieldNameIndex("dst_id"),QString::number(it.dst_feature_id));
         all_layers[1]->changeAttributeValue(it.feature_id,all_layers[1]->getFeature(it.feature_id).fieldNameIndex("control_id"),QString::number(it.control_point_id));
+        all_layers[1]->changeAttributeValue(it.feature_id,all_layers[1]->getFeature(it.feature_id).fieldNameIndex("orinted"),QString::number(it.orinted));
+        all_layers[1]->changeAttributeValue(it.feature_id,all_layers[1]->getFeature(it.feature_id).fieldNameIndex("length"),QString::number(it.length));
 
 
     }
@@ -435,7 +625,15 @@ void MyFeatureTool::saveAttributeDatas()
     all_layers[1]->commitChanges(true);
     all_layers[2]->commitChanges(true);
 
+
+    clearPathHighLight();
+    find_status=false;
+    finding_status=true;
+
+
+
 }
+
 QString MyFeatureTool::listToQString(const QList<int>& value)
 {
     QString res;
@@ -449,6 +647,7 @@ QString MyFeatureTool::listToQString(const QList<int>& value)
     }
     return res;
 }
+
 void MyFeatureTool::deleteFeature()
 {
 //    getALLFeatures();
@@ -510,7 +709,7 @@ void MyFeatureTool::deleteFeature()
 
         clearHighLight();
     }
-
+    qDebug()<<"删除成功";
     mCanvas->refresh();
 }
 void MyFeatureTool::allClear()
@@ -538,6 +737,8 @@ void MyFeatureTool::allClear()
 
 
     clearHighLight();
+    clearPathHighLight();
+    clearTestHighLight();
 
 
 
@@ -550,6 +751,7 @@ void MyFeatureTool::allClear()
     capture_point_ids.clear();
     temp_change_line.clear();
     temp_all_points.clear();
+    find_status=false;
 
 
 
@@ -570,8 +772,9 @@ void MyFeatureTool::addPoint(const QgsPoint &point)
     feature.setGeometry(*new_geomery);
 
     //添加字段
-    int attribute_id=all_points.size()==0?0:all_points[all_points.lastKey()].attribute_id+1;
-    feature.setAttribute("id",attribute_id);
+    int feature_id=all_points.size()==0?0:all_points[all_points.lastKey()].feature_id+1;
+
+    feature.setAttribute("id",feature_id);
     feature.setAttribute("type",0);
 
 
@@ -586,7 +789,7 @@ void MyFeatureTool::addPoint(const QgsPoint &point)
     PointFeature temp_point;
 //    temp_point.feature=&feature;
     temp_point.feature_id=feature.id();
-    temp_point.attribute_id=attribute_id;
+//    temp_point.attribute_id=attribute_id;
     temp_point.x=point.x();
     temp_point.y=point.y();
     temp_point.feature=feature;
@@ -652,7 +855,7 @@ void MyFeatureTool::drawLineOrCurve()
     }
 
     //设置线属性
-    int index=all_lines.size()==0?0:all_lines[all_lines.lastKey()].attribute_id+1;
+    int index=all_lines.size()==0?0:all_lines[all_lines.lastKey()].feature_id+1;
     feature->setAttribute("id",index);
 
 
@@ -669,11 +872,14 @@ void MyFeatureTool::drawLineOrCurve()
     temp_line.feature=*feature;
     temp_line.feature_id=feature->id();
     temp_line.control_point_id=-1;
-    temp_line.attribute_id=index;
+//    temp_line.attribute_id=index;
     temp_line.src_feature_id=src_id;//all_points[dst_id-1].feature_id
-    temp_line.src_attribute_id=all_points[src_id].attribute_id;
+//    temp_line.src_attribute_id=all_points[src_id].attribute_id;
     temp_line.dst_feature_id=dst_id;//all_points[dst_id].feature_id
-    temp_line.dst_attribute_id=all_points[dst_id].attribute_id;
+//    temp_line.dst_attribute_id=all_points[dst_id].attribute_id;
+    temp_line.length=feature->geometry().length();
+    temp_line.orinted=1;//单向
+
     if(tool_status==DrawingMode::CurveMode)
     {
         temp_line.control_point_id=feature->id();
@@ -761,11 +967,82 @@ void MyFeatureTool::setHightLight(const QgsFeature & feature)
     // DEFAULT_HIGHLIGHT_MIN_WIDTH_MM = 1.0
     highlight->setMinWidth(Qgis::DEFAULT_HIGHLIGHT_MIN_WIDTH_MM);	// 设置最小线/笔画宽度，以毫米为单位
 //    qDebug()<<123<<feature.geometry().type();
-    for(auto it:capture_point_ids)
+//    for(auto it:capture_point_ids)
+//    {
+
+//    }
+
+}
+void MyFeatureTool::setPathHighLight(std::vector<int> path)
+{
+//    path_highlight.clear();
+    clearPathHighLight();
+    for(int i=0;i<path.size();++i)
     {
+        QgsHighlight *temp_highlight=new QgsHighlight(mCanvas,all_layers[0]->getFeature(path[i]),all_layers[0]);//点的高亮
+        temp_highlight->setFillColor(Qt::green);	// 填充颜色
+        temp_highlight->setColor(Qt::green);	// 设置线条/描边颜色
+        temp_highlight->update();
+        //    qDebug()<<"填充";
+        //    highlight->setBuffer(0.5);
+        //    highlight->setBoundingRegionGranularity(0.1);
+        temp_highlight->setBuffer(Qgis::DEFAULT_HIGHLIGHT_BUFFER_MM);	// 设置行/行程缓冲以毫米为单位
+        // DEFAULT_HIGHLIGHT_MIN_WIDTH_MM = 1.0
+        temp_highlight->setMinWidth(Qgis::DEFAULT_HIGHLIGHT_MIN_WIDTH_MM);	// 设置最小线/笔画宽度，以毫米为单位
+        path_highlight.push_back(temp_highlight);
+        QgsPoint point(all_points[path[i]].x,all_points[path[i]].y);
+        capture_point_List.append(point);
+        if(i>0)
+        {
+
+            QgsGeometry geo=QgsGeometry::fromPolyline( capture_point_List.toVector() );
+            QgsHighlight *temp_line_highlight=new QgsHighlight(mCanvas,geo,all_layers[1]);
+            temp_line_highlight->setFillColor(Qt::green);	// 填充颜色
+            temp_line_highlight->setColor(Qt::green);	// 设置线条/描边颜色
+            temp_line_highlight->update();
+            //    qDebug()<<"填充";
+            //    highlight->setBuffer(0.5);
+            //    highlight->setBoundingRegionGranularity(0.1);
+            temp_line_highlight->setBuffer(Qgis::DEFAULT_HIGHLIGHT_BUFFER_MM);	// 设置行/行程缓冲以毫米为单位
+            // DEFAULT_HIGHLIGHT_MIN_WIDTH_MM = 1.0
+            temp_line_highlight->setMinWidth(Qgis::DEFAULT_HIGHLIGHT_MIN_WIDTH_MM);	// 设置最小线/笔画宽度，以毫米为单位
+            path_highlight.push_back(temp_line_highlight);
+            qDebug()<<"创建一条直线高亮！";
+            capture_point_List.removeAt(0);
+
+        }
+
 
     }
-
+    capture_point_List.clear();
+}
+void MyFeatureTool::setStartTestHighLight(QgsPoint point)
+{
+    QgsGeometry geo(QgsGeometry::fromPointXY(QgsPointXY( point.x(),point.y())));
+    start_highlight=new QgsHighlight(mCanvas,geo,all_layers[0]);
+    start_highlight->setFillColor(Qt::blue);	// 填充颜色
+    start_highlight->setColor(Qt::blue);	// 设置线条/描边颜色
+    start_highlight->update();
+    //    qDebug()<<"填充";
+    //    highlight->setBuffer(0.5);
+    //    highlight->setBoundingRegionGranularity(0.1);
+    start_highlight->setBuffer(Qgis::DEFAULT_HIGHLIGHT_BUFFER_MM);	// 设置行/行程缓冲以毫米为单位
+    // DEFAULT_HIGHLIGHT_MIN_WIDTH_MM = 1.0
+    start_highlight->setMinWidth(Qgis::DEFAULT_HIGHLIGHT_MIN_WIDTH_MM);
+}
+void MyFeatureTool::setTargetTestHighLight(QgsPoint point)
+{
+    QgsGeometry geo(QgsGeometry::fromPointXY(QgsPointXY( point.x(),point.y())));
+    target_highlight=new QgsHighlight(mCanvas,geo,all_layers[0]);
+    target_highlight->setFillColor(Qt::black);	// 填充颜色
+    target_highlight->setColor(Qt::black);	// 设置线条/描边颜色
+    target_highlight->update();
+    //    qDebug()<<"填充";
+    //    highlight->setBuffer(0.5);
+    //    highlight->setBoundingRegionGranularity(0.1);
+    target_highlight->setBuffer(Qgis::DEFAULT_HIGHLIGHT_BUFFER_MM);	// 设置行/行程缓冲以毫米为单位
+    // DEFAULT_HIGHLIGHT_MIN_WIDTH_MM = 1.0
+    target_highlight->setMinWidth(Qgis::DEFAULT_HIGHLIGHT_MIN_WIDTH_MM);
 }
 int MyFeatureTool::getCanvasStatus(DrawingMode mode)
 {

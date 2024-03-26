@@ -48,10 +48,12 @@ public:
     void initalive();
     QgsMapLayer* SetPointsData();
     QgsMapLayer* SetLinesData();
+    MyFeatureTool* getFeatureTool(){return add_feature_tool;}
     void GetNetData();
     void RenderingLayers(QColor color_,double size_,QgsVectorLayer* points);
 //    void Rendering(QColor lines_color,QColor points_color,double line_size,double point_size,QgsVectorLayer* layers);
-    void SaveShp(QString dir_path,QString filename,QgsVectorLayer* layers);
+    void SaveShp(QString file_path,QgsVectorLayer* layers);
+
 
 
 
@@ -130,6 +132,9 @@ private:
     QgsCoordinateReferenceSystem crs;
 
     QString dirname;
+    QString point_path;
+    QString line_path;
+    QString virtual_path;
 
 };
 

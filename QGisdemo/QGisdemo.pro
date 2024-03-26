@@ -24,18 +24,21 @@ DEFINES += QT_DEPRECATED_WARNINGS
 #DEFINES += QT_DISABLE_DEPRECATED_BEFORE=0x060000    # disables all the APIs deprecated before Qt 6.0.0
 INCLUDEPATH += /usr/include/qgis
 LIBS += -L/usr/lib -lqgis_core -lqgis_gui
-
+INCLUDEPATH += /usr/include/gdal
+LIBS += -lgdal
 SOURCES += \
         main.cpp \
         qgisdemo.cpp \
     qgsgraphmap.cpp \
-    myfeaturetool.cpp
+    myfeaturetool.cpp \
+    mygdaltool.cpp
 
 HEADERS += \
         qgisdemo.h \
     qgsgraphmap.h \
     data.h \
-    myfeaturetool.h
+    myfeaturetool.h \
+    mygdaltool.h
 
 FORMS += \
         qgisdemo.ui

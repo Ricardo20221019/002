@@ -17,6 +17,7 @@
 #include <gdal.h>
 
 #include "qgsgraphmap.h"
+#include "mygdaltool.h"
 namespace Ui {
 class QGisDemo;
 }

@@ -13,7 +13,7 @@ struct netPath
 struct PointFeature
 {
     int feature_id;
-    int attribute_id;
+//    int attribute_id;
     int type;
     double x;
     double y;
@@ -25,13 +25,15 @@ struct PointFeature
 struct LineFeature
 {
     int feature_id;
-    int attribute_id;
+//    int attribute_id;
     int src_feature_id;
-    int src_attribute_id;
-    int dst_attribute_id;
+//    int src_attribute_id;
+//    int dst_attribute_id;
     int dst_feature_id;
     int control_point_id;
     QgsFeature feature;
+    double length;
+    int orinted;
 };
 struct CurveFeature
 {
@@ -44,7 +46,7 @@ struct CurveFeature
 struct PolgonFeature
 {
     int feature_id;
-    int attribute_id;
+//    int attribute_id;
     QString points;
 
 };
@@ -54,11 +56,17 @@ enum DrawingMode
     LineMode = 1,//线段模式（路线编辑 路网编辑）
     CurveMode = 2,//曲线模式（路网编辑 路线编辑）
     AreaMode = 3,//区域模式（虚拟墙编辑）
+    FindPath=4,
 //    NavigatorMode = 3,//导航模式
 //    MappingMode=5, //建图模式
-    ForbidEditMode=4
+    ForbidEditMode=5
     //任务编辑
     //录制模式
+};
+enum FindPoint
+{
+    Insert=0,
+    NoInsert=1
 };
 
 enum CaptureMode // 矢量化类型

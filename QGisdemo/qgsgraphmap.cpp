@@ -57,6 +57,10 @@ void QgsGraphMap::setToolStatus(int index)
         }
         add_feature_tool->clearHighLight();
         add_feature_tool->startCapturing();
+        if(index==4)
+        {
+            add_feature_tool->setFindStatus(true);
+        }
     }
     else//选中
     {
@@ -88,16 +92,16 @@ void QgsGraphMap::allClear()
 {
     emit allClearFeatures();
 }
-void QgsGraphMap::SaveShp(QString dir_path,QString filename,QgsVectorLayer* layers)
+void QgsGraphMap::SaveShp(QString file_path,QgsVectorLayer* layers)
 {
     QgsVectorFileWriter::SaveVectorOptions saveOptions;
     saveOptions.driverName = "ESRI Shapefile"; // 设置输出驱动为Shapefile
     saveOptions.fileEncoding = "UTF-8";
     QgsCoordinateTransformContext transformContext;
-    int res=QgsVectorFileWriter::writeAsVectorFormatV2(layers,dir_path+filename,transformContext,saveOptions);
+    int res=QgsVectorFileWriter::writeAsVectorFormatV2(layers,file_path,transformContext,saveOptions);
     if(res!=0)
     {
-        qDebug()<<"保存矢量图层为.shp文件失败";
+        qDebug()<<"保存矢量图层为.shp文件失败"<<res;
     }
 }
 
@@ -168,6 +172,8 @@ DrawingMode QgsGraphMap::getCanvasStatus(int index)
         return DrawingMode::CurveMode;
     case 3:
         return DrawingMode::AreaMode;//区域模式（虚拟墙编辑）
+    case 4:
+        return DrawingMode::FindPath;
     default:
         return DrawingMode::ForbidEditMode;
     }
@@ -182,7 +188,7 @@ void QgsGraphMap::updateAtrribute()
     {
         PointFeature point_feature;
         point_feature.feature_id=feature.id();
-        point_feature.attribute_id=feature.id();
+//        point_feature.attribute_id=feature.id();
 //        point_feature.feature=new QgsFeature(&feature);
         QList<QString> list=feature.attribute("lines").toString().split(' ');
         for(auto it:list)
@@ -202,11 +208,13 @@ void QgsGraphMap::updateAtrribute()
     {
         LineFeature temp_feature;
         temp_feature.feature_id=line_feature.id();
-        temp_feature.attribute_id=line_feature.id();
+//        temp_feature.attribute_id=line_feature.id();
         temp_feature.feature=line_feature;
         temp_feature.src_feature_id=line_feature.attribute("src_id").toInt();
         temp_feature.dst_feature_id=line_feature.attribute("dst_id").toInt();
         temp_feature.control_point_id=line_feature.attribute("control_id").toInt();
+        temp_feature.orinted=line_feature.attribute("orinted").toInt();
+        temp_feature.length=line_feature.attribute("length").toDouble();
         add_feature_tool->setLineFeature(line_feature.id(),temp_feature);
     }
 
@@ -216,7 +224,7 @@ void QgsGraphMap::updateAtrribute()
     {
         PolgonFeature temp_feature;
         temp_feature.feature_id=area_feature.id();
-        temp_feature.attribute_id=area_feature.id();
+//        temp_feature.attribute_id=area_feature.id();
         temp_feature.points=area_feature.attribute("points").toString();
         add_feature_tool->setPolognFeature(area_feature.id(),temp_feature);
     }
@@ -227,6 +235,9 @@ void QgsGraphMap::updateAtrribute()
 void QgsGraphMap::saveAttributeData()
 {
     add_feature_tool->saveAttributeDatas();
+//    SaveShp(point_path,my_layers[0]);
+//    SaveShp(line_path,my_layers[1]);
+//    SaveShp(virtual_path,my_layers[2]);
 //    qDebug()<<"保存字段";
 }
 QgsMapLayer* QgsGraphMap::SetPointsData()
@@ -318,9 +329,9 @@ void QgsGraphMap::GetNetData()//QList<QString> paths
 {
 
 
-    QString point_path="/home/chenlang/soft/QGisdemo/Map/net/points.shp";
-    QString line_path="/home/chenlang/soft/QGisdemo/Map/net/lines.shp";
-    QString virtual_path="/home/chenlang/soft/QGisdemo/Map/net/virtuals.shp";
+    point_path="/home/chenlang/soft/QGisdemo/Map/net/points.shp";
+    line_path="/home/chenlang/soft/QGisdemo/Map/net/lines.shp";
+    virtual_path="/home/chenlang/soft/QGisdemo/Map/net/virtuals.shp";
 
     my_layers[0]=new QgsVectorLayer(point_path, "point", "ogr");
     my_layers[1]=new QgsVectorLayer(line_path, "line", "ogr");

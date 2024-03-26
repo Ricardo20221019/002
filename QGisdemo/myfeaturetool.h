@@ -21,7 +21,9 @@
 #include <qgssnapindicator.h>
 #include <qgscompoundcurve.h>
 #include <qgscircularstring.h>
+#include <qgsvectorfilewriter.h>
 
+#include "mygdaltool.h"
 
 
 
@@ -46,16 +48,29 @@ public:
 
     void addLayers(QgsMapLayer* layer,int i);
 
+    void setFindStatus(bool status){finding_status=status;}
+
     void setMode(DrawingMode mode){tool_status=mode;}
 
     int getFeatureId(){return select_attributte_id;}//select_attributte_id}
 
     DrawingMode Mode(){return tool_status;}
 
+    void findCurShortestPath();
+
+    void insertPoint(int index);
+
+
+
+
     void startCapturing();
     void stopCapturing();
     int getIndex(QgsWkbTypes::GeometryType type);
     void clearHighLight();
+    void clearPathHighLight();
+    void clearTestHighLight();
+
+
 
 
     void setPointFeature(int id,PointFeature point_feature);
@@ -64,11 +79,15 @@ public:
     void displayAllFeature();
     void saveAttributeDatas();
     QString listToQString(const QList<int>& value);
+    MyGDALTool* getGDALTool(){return gdal_tool;}
+
 
 
 
 signals:
 //    void curLayerChange(int index);
+    void findPathStartPoint(double x,double y);
+
 
 public slots:
     void deleteFeature();
@@ -80,10 +99,16 @@ private:
     void addVertex(const QgsPoint &point);
     void drawLineOrCurve();
 
+
     QgsRubberBand* createRubberBand(QgsWkbTypes::GeometryType geometryType,bool alternativeBand );
     void deleteTempRubberBand();
 
     void setHightLight(const QgsFeature & feature);
+    void setPathHighLight(std::vector<int> path);
+    void setStartTestHighLight(QgsPoint point);
+    void setTargetTestHighLight(QgsPoint point);
+
+//    void clearTestHighLight();
     int getCanvasStatus(DrawingMode mode);
 
     void updateAllPoints(int delete_point,QList<int> delete_lines);
@@ -97,10 +122,14 @@ private:
 private:
     QgsMapCanvas* my_canvas;//tool
     QgsMapToolIdentify *select_Tool;
+    MyGDALTool * gdal_tool;
     QgsRubberBand* mTempRubberBand;
     QgsRubberBand* mRubberBand;
     QgsHighlight *highlight=nullptr;
     QgsFeature *select_feature=nullptr;
+    std::vector<QgsHighlight*> path_highlight;
+    QgsHighlight *start_highlight=nullptr;
+    QgsHighlight *target_highlight=nullptr;
 
 
     QList<QgsMapLayer *> my_layers;//Cache layers
@@ -131,6 +160,8 @@ private:
     int select_attributte_id=-1;
     int moving_feature_id=-1;
     QgsWkbTypes::GeometryType select_feature_type;
+    bool find_status=false;
+    bool finding_status=false;
 
 
 
